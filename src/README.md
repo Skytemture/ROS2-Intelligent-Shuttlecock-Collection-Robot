@@ -1,1 +1,1 @@
-lidar & astra_camera should install yourself
+lidar & astra_camera should install by yourself
