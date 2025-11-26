@@ -15,3 +15,6 @@ CHI-HSUAN KAO、WEI-JHE LI、 LI-ZHI TANG
 Advisor: JIAN-WEI LI， Ph.D. 
 中華民國115年6月 
 June 2026
+
+安裝環境
+ros2 0.10.3 (galactic)
