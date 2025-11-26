@@ -1,0 +1,2 @@
+and i need to move my robot,so i need one more node named "/robot_control2"
+if the target x is in the left(-1<x<310) then out put 1202,midddle(309<x<331) output 0101,right (330<x<641) output 0212,nothing detect with 0000

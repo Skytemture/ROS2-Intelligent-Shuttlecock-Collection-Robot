@@ -1,0 +1,24 @@
+如果你經常會遇到這類權限問題，可以考慮加入 udev 規則，例如：
+
+```bash
+sudo nano /etc/udev/rules.d/99-ttyths.rules
+```
+
+內容加上：
+
+```
+KERNEL=="ttyTHS0", MODE="0666"
+```
+
+儲存後，重載規則：
+
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+然後再試試看。
+
+---
+
+如果你貼上 `groups` 的結果和目前的 `ls -l /dev/ttyTHS0` 給我，我可以幫你進一步檢查。要不要我們一步步看下去？
