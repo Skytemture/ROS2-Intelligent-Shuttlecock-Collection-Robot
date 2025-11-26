@@ -1,0 +1,77 @@
+Great question — a `.sh` **won't run automatically** on startup *by itself*. But if you **connect it to a `systemd` service**, **then yes**, it *will* run automatically at startup.
+
+---
+
+## ✅ To Make Your `.sh` Run at Startup
+
+You already created the shell script:
+
+```bash
+/home/user/ros2_ws/start_astra_camera.sh
+```
+
+Now follow these steps to **connect it to a systemd service** (if you haven’t already):
+
+---
+
+### 🛠 Step-by-Step: Hook the `.sh` to systemd
+
+#### 1. Create the service file
+
+```bash
+sudo nano /etc/systemd/system/astra_camera.service
+```
+
+Paste this in:
+
+```ini
+[Unit]
+Description=Start Astra Camera and Image Analyze on Boot
+After=network.target
+
+[Service]
+User=user
+ExecStart=/home/user/ros2_ws/start_astra_camera.sh
+Restart=on-failure
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
+```
+
+> 🔁 Replace `user` with your actual username (you can run `whoami` to check).
+
+---
+
+#### 2. Reload and enable the service
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable astra_camera.service
+```
+
+You can now test it:
+
+```bash
+sudo systemctl start astra_camera.service
+```
+
+Check logs or status:
+
+```bash
+sudo systemctl status astra_camera.service
+```
+
+---
+
+### ✅ Now the `.sh` Will Run on Boot
+
+Every time you reboot, the script will auto-run via `systemd`. If you want to confirm after reboot:
+
+```bash
+sudo systemctl status astra_camera.service
+```
+
+---
+
+Want it to **log output** to a file? I can show you how to add that too!

@@ -1,0 +1,64 @@
+The NVIDIA Developer Forums thread on [PyTorch for Jetson](https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048) provides pre-built PyTorch pip wheel installers tailored for Jetson devices. These wheels are optimized for ARM aarch64 architecture and are compatible with various JetPack versions. For instance, for JetPack 6.0 (L4T R36.2 / R36.3) with CUDA 12.2, PyTorch v2.3.0 is available. Similarly, for JetPack 5.1 (L4T R35.2.1), PyTorch v2.1.0 is provided. It's crucial to select the wheel that matches your JetPack version and Python environment to ensure compatibility.
+
+These wheels are built with CUDA support, enabling GPU acceleration on Jetson devices. Ensure that you install these wheels directly on your Jetson device, not on a host PC. Additionally, NVIDIA offers Docker containers with pre-installed PyTorch environments, which can be a convenient alternative.
+
+For detailed installation instructions and to download the appropriate wheel for your setup, refer to the [PyTorch for Jetson](https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048) thread. 
+
+Sure! To **set `LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1` system-wide**, you can add it to your **environment variables** in a way that works at boot or for all terminal sessions.
+
+Here are a few ways depending on your need:
+
+---
+
+### ✅ **Option 1: Set for all users globally (recommended for system-wide use)**
+
+Add this to `/etc/environment`:
+
+1. Open with `sudo`:
+   ```bash
+   sudo nano /etc/environment
+   ```
+
+2. Add or modify the line:
+   ```
+   LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1
+   ```
+
+3. Save and reboot or re-login:
+   ```bash
+   sudo reboot
+   ```
+
+This sets the variable for **all shells and apps** on boot.
+
+---
+
+### ✅ **Option 2: Set only for one user (e.g., user `robot`)**
+
+1. Edit the user's `.bashrc`:
+   ```bash
+   nano ~/.bashrc
+   ```
+
+2. Add this line at the end:
+   ```bash
+   export LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1
+   ```
+
+3. Apply the changes:
+   ```bash
+   source ~/.bashrc
+   ```
+
+This will apply only for your terminal sessions for user `robot`.
+
+---
+
+### ⚠️ Notes
+
+- If you're launching ROS 2 nodes with `systemd` or as a service, you might need to **edit the systemd service file** and set the environment variable using `Environment=LD_PRELOAD=...`.
+- If you're using a virtualenv or conda, set `LD_PRELOAD` inside the activation script.
+
+---
+
+Would you like me to help you write a systemd service for your ROS 2 node with `LD_PRELOAD` set in it?
