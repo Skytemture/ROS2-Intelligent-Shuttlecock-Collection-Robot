@@ -1,0 +1,6 @@
+map_server:
+  ros__parameters:
+    yaml_filename: "/home/robot/ros2_ws/robot_map.yaml"
+    frame_id: "map"
+    publish_rate: 1.0
+    autostart: true

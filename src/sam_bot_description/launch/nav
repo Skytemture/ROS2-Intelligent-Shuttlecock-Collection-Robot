@@ -1,0 +1,120 @@
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.actions import DeclareLaunchArgument, TimerAction, IncludeLaunchDescription
+from launch.substitutions import LaunchConfiguration, Command
+from launch_ros.substitutions import FindPackageShare
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+import launch_ros
+import os
+
+def generate_launch_description():
+
+    pkg_share = FindPackageShare(package='sam_bot_description').find('sam_bot_description')
+    nav2_bringup_dir = FindPackageShare(package='nav2_bringup').find('nav2_bringup')
+
+    default_model_path = os.path.join(pkg_share, 'urdf/sam_bot.urdf.xacro')
+    default_rviz_config_path = os.path.join(pkg_share, 'rviz/localization.rviz')
+    default_nav2_params = os.path.join(pkg_share, 'config/nav2_params.yaml')
+    default_map_path = '/home/robot/ros2_ws/robot_map.yaml'
+
+    # 啟動 Nav2 套件（包含 map_server, amcl, planner, controller 等）
+    nav2_bringup_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(nav2_bringup_dir, 'launch', 'bringup_launch.py')
+        ),
+        launch_arguments={
+            'map': default_map_path,
+            'params_file': default_nav2_params
+        }.items()
+    )
+
+    #pub tf
+    tf_node = launch_ros.actions.Node(
+        package='robot',
+        executable='run',
+        name='sensor_control',
+        output='screen',
+    )
+
+    # 傳送 cmd_vel 給 STM32
+    nav2serial_node = Node(
+        package='robot',
+        executable='nav2serial',
+        name='cmd_vel_to_serial',
+        output='screen'
+    )
+
+    # 可選：EKF 節點
+    ekf_node = launch_ros.actions.Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[os.path.join(pkg_share, 'config','ekf.yaml')]
+    )
+
+    # 延遲啟動 nav2_patrol
+    nav2_patrol_node = TimerAction(
+        period=5.0,
+        actions=[
+            Node(
+                package='robot',
+                executable='nav2_patrol',
+                name='nav2_patrol',
+                output='screen'
+            )
+        ]
+    )
+
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            name='model',
+            default_value=default_model_path,
+            description='Absolute path to robot urdf file'
+        ),
+        DeclareLaunchArgument(
+            name='rvizconfig',
+            default_value=default_rviz_config_path,
+            description='Absolute path to rviz config file'
+        ),
+        DeclareLaunchArgument(
+            name='params_file',
+            default_value=default_nav2_params,
+            description='Path to navigation parameter file'
+        ),
+        DeclareLaunchArgument(
+            name='map',
+            default_value=default_map_path,
+            description='Path to prebuilt map YAML'
+        ),
+
+        # 機器人狀態發布
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            output='screen',
+            parameters=[{
+                'robot_description': Command(['xacro ', LaunchConfiguration('model')])
+            }]
+        ),
+
+        tf_node,
+        nav2serial_node,
+        # ekf_node,  # 如果需要融合 odom/imu 可以打開
+
+        # 啟動 Nav2 stack (map_server + amcl + controller + planner + recoveries...)
+        nav2_bringup_launch,
+
+        # 啟動 RViz
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', LaunchConfiguration('rvizconfig')],
+            output='screen'
+        ),
+
+        # 延遲啟動巡邏
+        nav2_patrol_node,
+    ])
+
