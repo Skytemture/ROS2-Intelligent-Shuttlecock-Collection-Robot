@@ -1,0 +1,101 @@
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+import serial
+import time
+
+class RobotControlSerialNode(Node):
+    def __init__(self):
+        super().__init__('robot_control_serial_node')
+
+        # Serial port setup
+        try:
+            self.serial_port = serial.Serial('/dev/ttyTHS0', 115200, timeout=1)
+            self.get_logger().info('Serial port /dev/ttyTHS0 opened successfully.')
+        except serial.SerialException as e:
+            self.get_logger().error(f'Failed to open serial port: {e}')
+            self.serial_port = None
+
+        # Publisher to send messages actively to /robot_control2
+        self.control_pub = self.create_publisher(String, '/robot_control2', 10)
+
+        # Subscriber to /robot_control2, listens and sends to serial
+        self.subscription = self.create_subscription(
+            String,
+            '/robot_control2',
+            self.listener_callback,
+            10
+        )
+
+        # Publisher for serial incoming data
+        self.serial_pub = self.create_publisher(String, '/serial_input', 10)
+
+        # Timer: read serial data 10 Hz
+        self.serial_timer = self.create_timer(0.1, self.read_serial_callback)
+
+        # Timer: publish alternating commands every 1 second
+        self.auto_timer = self.create_timer(1.0, self.auto_publish_command)
+        self.toggle = True
+
+    def listener_callback(self, msg):
+        self.get_logger().info(f'Received on /robot_control2, sending over serial: {msg.data}')
+        if self.serial_port and self.serial_port.is_open:
+            try:
+                data_to_send = (msg.data + '\n').encode('utf-8')
+                start_time = time.time()
+                while time.time() - start_time < 0.1:
+                    self.serial_port.write(data_to_send)
+                    self.get_logger().info(f'Sent over serial: {msg.data}')
+                    time.sleep(0.01)  # 🔹 Use 0.001 instead of 0.0001 for reliability
+            except serial.SerialException as e:
+                self.get_logger().error(f'Error writing to serial port: {e}')
+
+    def read_serial_callback(self):
+        if self.serial_port and self.serial_port.in_waiting > 0:
+            try:
+                line = self.serial_port.readline().decode('utf-8').strip()
+                if line:
+                    self.get_logger().info(f'Received from serial: {line}')
+                    msg = String()
+                    msg.data = line
+                    self.serial_pub.publish(msg)
+            except Exception as e:
+                self.get_logger().error(f'Error reading serial: {e}')
+
+    def auto_publish_command(self):
+        msg = String()
+        msg.data = '1414' if self.toggle else '0404'  # 其實這樣沒變化，可改為不同值 if 需要
+        self.toggle = not self.toggle
+        self.control_pub.publish(msg)
+        self.get_logger().info(f'Auto published to /robot_control2: {msg.data}')
+        time.sleep(1)
+
+    def destroy_node(self):
+        # 🔹 在結束前發送 "0000" 串口資料，持續 1 秒，每次間隔 0.001 秒
+        if self.serial_port and self.serial_port.is_open:
+            try:
+                self.get_logger().info("Sending '0000' before shutdown...")
+                end_time = time.time() + 1.0
+                zero_data = b'0000\n'
+                while time.time() < end_time:
+                    self.serial_port.write(zero_data)
+                    time.sleep(0.01)
+                self.get_logger().info("Completed '0000' shutdown signal.")
+            except serial.SerialException as e:
+                self.get_logger().error(f'Error writing "0000" to serial during shutdown: {e}')
+            self.serial_port.close()
+        super().destroy_node()
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = RobotControlSerialNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+
